@@ -2,77 +2,93 @@
 
 namespace Chat;
 
-use PubNub\PNConfiguration;
-use PubNub\PubNub;
-use PubNub\Callbacks\SubscribeCallback;
+use Chat\Entities\User;
+use Pubnub\Pubnub;
 
 class ChatManager
 {
     public static function init()
     {
-        $publishKey = 'pub-c-9f8e6aea-3185-4d6a-99de-9577b2d3fd31';
-        $subscribeKey = 'sub-c-4fb1ed2e-7af1-11e8-a43f-d6f8762e29f7';
-        $secretKey = 'sec-c-YTQ1Y2E4ZDUtYjk0OS00NGYxLWJkMzgtMmMxMWIwOWFhZjA2';
+        $server = new Server(PubnubAdapter::make());
 
-        $PNConfig = new PNConfiguration();
-        $PNConfig->setPublishKey($publishKey)
-                ->setSubscribeKey($subscribeKey)
-                ->setSecretKey($secretKey);
+        $user = new User();
 
-        $pubnub = new PubNub($PNConfig);
+        $config = require __DIR__.'/../config.php';
 
-        $connectAs = function() {
+        $pubnub = new Pubnub(
+            $config['publish-key'],
+            $config['subscribe-key'],
+            $config['secret-key'],
+            false
+        );
+
+        $joinAs = function() {
             fwrite(STDOUT, 'Connect as: ' );
             return trim(fgets(STDIN));
         };
 
-        $username = $connectAs();
-
         fwrite(STDOUT, 'Join: ');
         $room = trim(fgets(STDIN));
 
+        $isUsernameTaken = function($username) use ($pubnub, $room) {
+            $hereNow = $pubnub->hereNow($room, false, true);
+            foreach ($hereNow['uuids'] as $user) {
+                if ($user['state']['username'] === $username) {
+                    return true;
+                }
+            }
+        };
 
-//        class MySubscribeCallback extends SubscribeCallback {
-//            function status($pubnub, $status) {
-//                if ($this->checkUnsubscribeCondition()) {
-//                    throw (new PubNubUnsubscribeException())->setChannels("awesomeChannel");
+        $username = $joinAs();
+        while ($isUsernameTaken($username)) {
+            fwrite(STDOUT, "Username already taken\n");
+            $username = $joinAs();
+        }
+
+        $pubnub->setState($room, [
+            'username' => $username
+        ]);
+
+        fwrite(STDOUT, "\nConnected to '{$room}' as '{$username}'\n");
+
+        $pid = pcntl_fork();
+
+        if ($pid === -1) {
+            exit(1);
+        } else if ($pid) {
+            // Code of parent process
+            fwrite(STDOUT, '> ');
+
+            while (true) {
+                $message = trim(fgets(STDIN));
+
+                $pubnub->publish($room, [
+                    'body' => $message,
+                    'username' => $username
+                ]);
+            }
+
+            pcntl_wait($status); // Guard against child zombie-processes
+        } else {
+            // Code of child process
+            $pubnub->subscribe($room, function($payload) use ($username) {
+
+                $author = $payload['message']['username'];
+
+//                if ($username !== $author) {
+                    fwrite(STDOUT, "\r");
 //                }
-//            }
-//
-//            function message($pubnub, $message) {
-////        die(var_dump($pubnub, $message));
-//                echo json_encode($message->getMessage());
-//            }
-//
-//            function presence($pubnub, $presence) {
-//            }
-//
-//            function checkUnsubscribeCondition() {
-//                // return true or false
-//            }
-//        }
 
 
-//        $callback = new MySubscribeCallback();
+                $message = $payload['message']['body'];
+                $timestamp = date('d-m-y H:i:s');
 
-//        $pubnub->addListener($callback);
+                fwrite(STDOUT, "[{$timestamp}] <{$author}> {$message}\n");
 
-        $pubnub->subscribe();
-//            ->channel('chat')
-//            ->execute();
+                fwrite(STDOUT, "> "); // carriage return sybmols = overwrite line)
 
-        //$pid = pcntl_fork();
-
-        //if ($pid === -1) {
-        //    exit(1);
-        //} else if ($pid) {
-        //    // Код родительского процесса
-        //    echo 'hello';
-        //
-        //    pcntl_wait($status); // Защита против дочерних "Зомби"-процессов
-        //} else {
-        //    // Код дочернего процесса
-        //    // true;
-        //}
+                return true;
+            });
+        }
     }
 }
