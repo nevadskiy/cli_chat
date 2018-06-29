@@ -13,11 +13,6 @@ use Chat\Entities\Message;
 abstract class Adapter
 {
     /**
-     * @var
-     */
-    protected $client;
-
-    /**
      * @param Channel $channel
      * @param User $user
      * @param callable $onMessageReceived

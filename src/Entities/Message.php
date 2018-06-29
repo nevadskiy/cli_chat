@@ -21,19 +21,19 @@ class Message
     /**
      * @var false|string
      */
-    protected $timestapm;
+    protected $timestamp;
 
     /**
      * Message constructor.
      * @param User $author
      * @param string $body
-     * @param null $timestapm
+     * @param null $timestamp
      */
-    public function __construct(User $author, string $body, $timestapm = null)
+    public function __construct(User $author, string $body, $timestamp = null)
     {
         $this->author = $author;
         $this->body = $body;
-        $this->timestapm = $timestapm ?: date('d-m-y H:i:s');
+        $this->timestamp = $timestamp ?: date('d-m-y H:i:s');
     }
 
     /**
@@ -47,9 +47,9 @@ class Message
     /**
      * @return false|string
      */
-    public function getTimestapm()
+    public function getTimestamp()
     {
-        return $this->timestapm;
+        return $this->timestamp;
     }
 
     /**
@@ -65,6 +65,6 @@ class Message
      */
     public function __toString()
     {
-        return "[{$this->getTimestapm()}] <{$this->getAuthor()->getName()}> {$this->getBody()}";
+        return "[{$this->getTimestamp()}] <{$this->getAuthor()->getName()}> {$this->getBody()}";
     }
 }

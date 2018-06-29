@@ -51,7 +51,6 @@ class Chat
             new Manager(PubnubAdapter::create()),
             new Console()
         );
-
     }
 
     /**
@@ -78,7 +77,7 @@ class Chat
                     $this->manager->send($this->channel, $message);
                 }
             }, function() {
-                $this->manager->join($this->channel, $this->user, function($message) {
+                $this->manager->join($this->channel, $this->user, function(Message $message) {
                     $this->console->overwrite('> ', $message);
                 });
             }

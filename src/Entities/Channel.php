@@ -17,9 +17,9 @@ class Channel
     protected $name;
 
     /**
-     * @var null
+     * @var Adapter
      */
-    protected $adapter = null;
+    protected $adapter;
 
     /**
      * Channel constructor.
